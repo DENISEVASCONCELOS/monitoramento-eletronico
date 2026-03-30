@@ -1,0 +1,1139 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Monitoramento Eletrônico — 3ª VD</title>
+
+<!-- Firebase SDK v9 (Compat) -->
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+
+<!-- Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<style>
+/* ===================== RESET ===================== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 14px; }
+body { font-family: 'DM Sans', sans-serif; background: #f0f4f0; color: #1a1a1a; min-height: 100vh; }
+
+/* ===================== HEADER ===================== */
+.header {
+  background: #14532d;
+  color: white;
+  padding: 14px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.35);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.header-left { display: flex; flex-direction: column; gap: 2px; }
+.header-title { font-size: 17px; font-weight: 700; letter-spacing: -0.3px; }
+.header-sub { font-size: 11px; opacity: 0.65; }
+.header-right { display: flex; align-items: center; gap: 20px; }
+.counters { display: flex; gap: 16px; align-items: center; }
+.counter { text-align: center; line-height: 1.2; }
+.counter-val { font-size: 22px; font-weight: 700; }
+.counter-lbl { font-size: 9px; opacity: 0.65; text-transform: uppercase; letter-spacing: 0.7px; }
+.cnt-com { color: #86efac; }
+.cnt-sem { color: #fdba74; }
+.cnt-total { color: #fff; }
+.conn-status { display: flex; align-items: center; gap: 6px; font-size: 11px; opacity: 0.85; white-space: nowrap; }
+.conn-dot { width: 8px; height: 8px; border-radius: 50%; background: #86efac; flex-shrink: 0; transition: background 0.3s; }
+.conn-dot.offline { background: #f87171; }
+.conn-dot.pending { background: #fbbf24; }
+
+/* ===================== NOTICE ===================== */
+.config-notice {
+  display: none;
+  background: #fffbeb;
+  border: 2px solid #f59e0b;
+  border-radius: 10px;
+  padding: 14px 20px;
+  margin: 16px 24px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: #78350f;
+}
+.config-notice code {
+  background: #fde68a;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+}
+
+/* ===================== CONTROLS ===================== */
+.controls {
+  background: white;
+  padding: 10px 24px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  border-bottom: 1px solid #e5e7eb;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+.search-wrap { position: relative; flex: 1; min-width: 200px; }
+.search-wrap input {
+  width: 100%;
+  padding: 7px 12px 7px 34px;
+  border: 1.5px solid #d1d5db;
+  border-radius: 7px;
+  font-size: 13px;
+  font-family: inherit;
+  transition: border-color 0.2s;
+  background: #fafafa;
+}
+.search-wrap input:focus { outline: none; border-color: #14532d; background: white; }
+.search-icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #9ca3af; font-size: 15px; pointer-events: none; }
+.filter-btns { display: flex; gap: 3px; }
+.fbtn {
+  padding: 6px 13px;
+  border: 1.5px solid #d1d5db;
+  background: white;
+  border-radius: 7px;
+  font-size: 12px;
+  font-family: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  color: #374151;
+  transition: all 0.15s;
+  letter-spacing: 0.2px;
+}
+.fbtn.active { background: #14532d; color: white; border-color: #14532d; }
+.fbtn:hover:not(.active) { border-color: #14532d; color: #14532d; }
+#sort-sel {
+  padding: 6px 10px;
+  border: 1.5px solid #d1d5db;
+  border-radius: 7px;
+  font-size: 12px;
+  font-family: inherit;
+  color: #374151;
+  background: white;
+  cursor: pointer;
+}
+#sort-sel:focus { outline: none; border-color: #14532d; }
+.btn-primary {
+  padding: 7px 15px;
+  background: #14532d;
+  color: white;
+  border: none;
+  border-radius: 7px;
+  font-size: 13px;
+  font-family: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+.btn-primary:hover { background: #15803d; }
+.btn-secondary {
+  padding: 7px 13px;
+  background: white;
+  color: #374151;
+  border: 1.5px solid #d1d5db;
+  border-radius: 7px;
+  font-size: 12px;
+  font-family: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.btn-secondary:hover { border-color: #14532d; color: #14532d; }
+
+/* ===================== TABLE WRAP ===================== */
+.table-wrap { padding: 16px 24px; overflow-x: auto; }
+
+/* ===================== LOADING ===================== */
+.loading-box { text-align: center; padding: 64px; color: #6b7280; }
+.spinner {
+  display: inline-block;
+  width: 36px; height: 36px;
+  border: 3px solid #e5e7eb;
+  border-top-color: #14532d;
+  border-radius: 50%;
+  animation: spin 0.75s linear infinite;
+  margin-bottom: 14px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ===================== TABLE ===================== */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.08);
+  font-size: 12.5px;
+}
+thead { background: #14532d; }
+th {
+  padding: 9px 11px;
+  text-align: left;
+  color: white;
+  font-weight: 600;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  white-space: nowrap;
+}
+td {
+  padding: 8px 11px;
+  border-bottom: 1px solid #f3f4f6;
+  vertical-align: top;
+}
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: #f9fafb; }
+
+/* STATUS BADGE */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+  transition: opacity 0.15s, transform 0.1s;
+}
+.badge:hover { opacity: 0.75; transform: scale(0.96); }
+.badge.com { background: #dcfce7; color: #14532d; border: 1px solid #86efac; }
+.badge.sem { background: #fff7ed; color: #9a3412; border: 1px solid #fdba74; }
+
+/* PROCESS CELL */
+.pr-cell { font-family: 'DM Mono', monospace; font-size: 11px; line-height: 1.8; }
+.pr-row { display: flex; gap: 5px; align-items: baseline; }
+.pr-lbl { font-size: 9px; font-weight: 700; text-transform: uppercase; color: #9ca3af; min-width: 26px; flex-shrink: 0; }
+.pr-val { word-break: break-word; }
+.pr-main {
+  background: #fefce8;
+  border: 1px solid #fbbf24;
+  border-radius: 3px;
+  padding: 1px 5px;
+  color: #713f12;
+  font-weight: 600;
+}
+
+/* DATE / DAYS */
+.d-ok   { color: #374151; }
+.d-warn { color: #d97706; font-weight: 600; }
+.d-bad  { color: #dc2626; font-weight: 700; }
+
+/* REAVALIAÇÃO */
+.rv-ok   { color: #374151; }
+.rv-warn { color: #d97706; font-weight: 600; }
+.rv-bad  { color: #dc2626; font-weight: 700; }
+
+/* OBS */
+.obs-cell { max-width: 200px; }
+.obs-toggle-btn {
+  background: none; border: none;
+  color: #15803d; font-size: 11px;
+  cursor: pointer; font-family: inherit;
+  padding: 0; text-decoration: underline;
+  margin-left: 3px;
+}
+
+/* EDIT BUTTONS */
+.btn-edit-sm {
+  padding: 3px 9px;
+  background: #f0fdf4;
+  color: #14532d;
+  border: 1px solid #86efac;
+  border-radius: 5px;
+  font-size: 11px;
+  font-family: inherit;
+  cursor: pointer;
+  font-weight: 500;
+  margin-right: 3px;
+  transition: background 0.15s;
+}
+.btn-edit-sm:hover { background: #dcfce7; }
+.btn-del-sm {
+  padding: 3px 9px;
+  background: #fff5f5;
+  color: #dc2626;
+  border: 1px solid #fca5a5;
+  border-radius: 5px;
+  font-size: 11px;
+  font-family: inherit;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background 0.15s;
+}
+.btn-del-sm:hover { background: #fee2e2; }
+
+/* EMPTY STATE */
+.empty-state { text-align: center; padding: 56px 24px; color: #9ca3af; }
+.empty-icon { font-size: 44px; margin-bottom: 12px; }
+
+/* ===================== PAGINATION ===================== */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 14px 24px;
+  background: white;
+  border-top: 1px solid #e5e7eb;
+  flex-wrap: wrap;
+}
+.pg-info { font-size: 12px; color: #6b7280; margin: 0 6px; }
+.btn-pg {
+  padding: 5px 11px;
+  border: 1.5px solid #d1d5db;
+  background: white;
+  border-radius: 6px;
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  color: #374151;
+  transition: all 0.15s;
+  line-height: 1.4;
+}
+.btn-pg:hover:not(:disabled) { border-color: #14532d; color: #14532d; }
+.btn-pg:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn-pg.pg-active { background: #14532d; color: white; border-color: #14532d; }
+.pg-ellipsis { font-size: 12px; color: #9ca3af; padding: 0 2px; line-height: 2; }
+
+/* ===================== MODALS ===================== */
+.overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 200;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  backdrop-filter: blur(2px);
+}
+.overlay.open { display: flex; }
+.modal {
+  background: white;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 580px;
+  max-height: 92vh;
+  overflow-y: auto;
+  box-shadow: 0 24px 60px rgba(0,0,0,0.25);
+  animation: slideUp 0.2s ease;
+}
+.modal-sm { max-width: 400px; }
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.modal-hdr {
+  background: #14532d;
+  color: white;
+  padding: 15px 20px;
+  border-radius: 12px 12px 0 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.modal-hdr.red { background: #dc2626; }
+.modal-hdr h3 { font-size: 15px; font-weight: 700; }
+.btn-close {
+  background: none; border: none; color: white;
+  font-size: 20px; cursor: pointer; opacity: 0.8;
+  line-height: 1; padding: 0;
+  transition: opacity 0.15s;
+}
+.btn-close:hover { opacity: 1; }
+.modal-body { padding: 18px 20px; }
+
+/* FORM */
+.fg { margin-bottom: 13px; }
+.fg label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  color: #374151;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+.fg input, .fg select, .fg textarea {
+  width: 100%;
+  padding: 7px 11px;
+  border: 1.5px solid #d1d5db;
+  border-radius: 7px;
+  font-size: 13px;
+  font-family: inherit;
+  transition: border-color 0.2s;
+  background: white;
+}
+.fg input:focus, .fg select:focus, .fg textarea:focus {
+  outline: none; border-color: #14532d;
+}
+.fg input.error { border-color: #dc2626; }
+.fg textarea { resize: vertical; min-height: 58px; }
+.fg-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.pr-group {
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 13px;
+}
+.pr-group-title {
+  font-size: 10px;
+  font-weight: 700;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  margin-bottom: 10px;
+}
+.modal-ftr {
+  padding: 14px 20px;
+  border-top: 1px solid #f3f4f6;
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+.btn-cancel-m {
+  padding: 8px 18px;
+  background: white;
+  color: #374151;
+  border: 1.5px solid #d1d5db;
+  border-radius: 7px;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  font-weight: 500;
+  transition: border-color 0.15s;
+}
+.btn-cancel-m:hover { border-color: #9ca3af; }
+.btn-save-m {
+  padding: 8px 22px;
+  background: #14532d;
+  color: white;
+  border: none;
+  border-radius: 7px;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background 0.15s;
+}
+.btn-save-m:hover { background: #15803d; }
+
+/* DELETE MODAL */
+.del-body { padding: 28px 20px; text-align: center; }
+.del-icon { font-size: 48px; margin-bottom: 12px; }
+.del-body h4 { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+.del-body p { font-size: 13px; color: #6b7280; line-height: 1.6; }
+.del-name { font-weight: 700; color: #dc2626; }
+.del-ftr {
+  padding: 14px 20px;
+  border-top: 1px solid #f3f4f6;
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+.btn-del-confirm {
+  padding: 8px 22px;
+  background: #dc2626;
+  color: white;
+  border: none;
+  border-radius: 7px;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background 0.15s;
+}
+.btn-del-confirm:hover { background: #b91c1c; }
+
+/* ===================== MISC ===================== */
+.nome-cell { font-weight: 600; min-width: 155px; max-width: 190px; }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="header-left">
+    <div class="header-title">⚖️ Monitoramento Eletrônico</div>
+    <div class="header-sub">3ª Vara Especializada em Violência Doméstica e Familiar contra a Mulher — TJBA</div>
+  </div>
+  <div class="header-right">
+    <div class="counters">
+      <div class="counter">
+        <div class="counter-val cnt-total" id="cnt-total">—</div>
+        <div class="counter-lbl">Total</div>
+      </div>
+      <div class="counter">
+        <div class="counter-val cnt-com" id="cnt-com">—</div>
+        <div class="counter-lbl">COM</div>
+      </div>
+      <div class="counter">
+        <div class="counter-val cnt-sem" id="cnt-sem">—</div>
+        <div class="counter-lbl">SEM</div>
+      </div>
+    </div>
+    <div class="conn-status">
+      <div class="conn-dot pending" id="conn-dot"></div>
+      <span id="conn-lbl">Conectando…</span>
+    </div>
+  </div>
+</header>
+
+<!-- CONFIG NOTICE -->
+<div class="config-notice" id="config-notice">
+  ⚠️ <strong>Firebase não configurado.</strong> Edite o arquivo HTML e substitua os valores em
+  <code>firebaseConfig</code> com os dados do seu projeto Firebase.
+  Consulte o guia de instalação fornecido junto com este arquivo.
+</div>
+
+<!-- CONTROLS -->
+<div class="controls">
+  <div class="search-wrap">
+    <span class="search-icon">🔍</span>
+    <input type="text" id="search-input" placeholder="Buscar por nome, processo ou observação…" oninput="applyFilters()">
+  </div>
+  <div class="filter-btns">
+    <button class="fbtn active" onclick="setFilter('todos',this)">Todos</button>
+    <button class="fbtn" onclick="setFilter('com',this)">COM</button>
+    <button class="fbtn" onclick="setFilter('sem',this)">SEM</button>
+  </div>
+  <select id="sort-sel" onchange="applyFilters()">
+    <option value="nome">Nome A–Z</option>
+    <option value="dt">Data Decretação</option>
+    <option value="rv">Reavaliação</option>
+  </select>
+  <button class="btn-secondary" onclick="exportCSV()">⬇ Exportar CSV</button>
+  <button class="btn-primary" onclick="openAdd()">+ Adicionar</button>
+</div>
+
+<!-- TABLE AREA -->
+<div class="table-wrap">
+  <div id="loading-box" class="loading-box">
+    <div class="spinner"></div>
+    <div>Conectando ao Firebase…</div>
+  </div>
+  <div id="empty-state" class="empty-state" style="display:none">
+    <div class="empty-icon">📋</div>
+    <div>Nenhum registro encontrado</div>
+  </div>
+  <table id="main-table" style="display:none">
+    <thead>
+      <tr>
+        <th>ST</th>
+        <th>Nome</th>
+        <th>Processos</th>
+        <th>Decret.</th>
+        <th>Dias</th>
+        <th>Reaval.</th>
+        <th>Obs</th>
+        <th>Ações</th>
+      </tr>
+    </thead>
+    <tbody id="tbody"></tbody>
+  </table>
+</div>
+
+<!-- PAGINATION -->
+<div class="pagination" id="pagination" style="display:none">
+  <button class="btn-pg" id="pg-prev" onclick="goPage(-1)">‹ Ant.</button>
+  <div id="pg-numbers"></div>
+  <button class="btn-pg" id="pg-next" onclick="goPage(1)">Próx. ›</button>
+  <span class="pg-info" id="pg-info"></span>
+</div>
+
+<!-- ====== MODAL: ADD/EDIT ====== -->
+<div class="overlay" id="form-modal">
+  <div class="modal">
+    <div class="modal-hdr">
+      <h3 id="form-title">Adicionar Monitorado</h3>
+      <button class="btn-close" onclick="closeModal('form-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="fg">
+        <label>Nome Completo *</label>
+        <input type="text" id="f-nome" placeholder="Nome do monitorado">
+      </div>
+      <div class="pr-group">
+        <div class="pr-group-title">Processos</div>
+        <div class="fg">
+          <label>AP — Ação Penal</label>
+          <input type="text" id="f-pr-ap" placeholder="Número e ID do processo">
+        </div>
+        <div class="fg">
+          <label>APF — Ação Penal (Fase Inquérito)</label>
+          <input type="text" id="f-pr-apf" placeholder="Número do processo APF">
+        </div>
+        <div class="fg">
+          <label>MPU — Medida Protetiva</label>
+          <input type="text" id="f-pr-mpu" placeholder="Número do processo MPU">
+        </div>
+        <div class="fg">
+          <label>IP — Inquérito Policial</label>
+          <input type="text" id="f-pr-ip" placeholder="Número do IP">
+        </div>
+        <div class="fg">
+          <label>Processo Principal (com o Decreto) *</label>
+          <select id="f-pd">
+            <option value="ap">AP — Ação Penal</option>
+            <option value="apf">APF — Ação Penal (Fase Inq.)</option>
+            <option value="mpu">MPU — Medida Protetiva</option>
+            <option value="ip">IP — Inquérito Policial</option>
+          </select>
+        </div>
+      </div>
+      <div class="fg-row">
+        <div class="fg">
+          <label>Data da Decretação</label>
+          <input type="text" id="f-dt" placeholder="DD/MM/AAAA">
+        </div>
+        <div class="fg">
+          <label>Data de Reavaliação</label>
+          <input type="text" id="f-rv" placeholder="DD/MM/AAAA ou REAVALIAR">
+        </div>
+      </div>
+      <div class="fg">
+        <label>Observações</label>
+        <textarea id="f-obs" rows="3" placeholder="Observações sobre o monitoramento…"></textarea>
+      </div>
+      <div class="fg">
+        <label>Status</label>
+        <select id="f-st">
+          <option value="com">COM cumprimento</option>
+          <option value="sem">SEM cumprimento</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-ftr">
+      <button class="btn-cancel-m" onclick="closeModal('form-modal')">Cancelar</button>
+      <button class="btn-save-m" onclick="saveRecord()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ====== MODAL: DELETE ====== -->
+<div class="overlay" id="del-modal">
+  <div class="modal modal-sm">
+    <div class="modal-hdr red">
+      <h3>Confirmar Exclusão</h3>
+      <button class="btn-close" onclick="closeModal('del-modal')">✕</button>
+    </div>
+    <div class="del-body">
+      <div class="del-icon">🗑️</div>
+      <h4>Tem certeza?</h4>
+      <p>Você está prestes a excluir o registro de<br>
+        <span class="del-name" id="del-nome-span"></span>
+      </p>
+      <p style="margin-top:8px;font-size:11px;color:#9ca3af">Esta ação não pode ser desfeita.</p>
+    </div>
+    <div class="del-ftr">
+      <button class="btn-cancel-m" onclick="closeModal('del-modal')">Cancelar</button>
+      <button class="btn-del-confirm" onclick="confirmDelete()">Excluir</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// FIREBASE CONFIG
+// Substitua CADA valor pelos dados do seu projeto Firebase.
+// Acesse: console.firebase.google.com → seu projeto
+//         → Configurações do projeto → Seus apps → SDK
+// ============================================================
+const firebaseConfig = {
+  apiKey:            "AIzaSyCAEhARwMkl2mabrku0BsDHBVGXfq_3bSg",
+  authDomain:        "monitoramento-eletronico-9dfbd.firebaseapp.com",
+  databaseURL:       "https://monitoramento-eletronico-9dfbd-default-rtdb.firebaseio.com",
+  projectId:         "monitoramento-eletronico-9dfbd",
+  storageBucket:     "monitoramento-eletronico-9dfbd.firebasestorage.app",
+  messagingSenderId: "374021798667",
+  appId:             "1:374021798667:web:59413e5700d2e73264400e"
+};
+
+// ============================================================
+// DADOS INICIAIS — 41 REGISTROS
+// (Carregados apenas uma vez, quando o banco estiver vazio)
+// ============================================================
+const INITIAL = [
+  {"id":1,"nome":"ANDERSON DA CONCEICAO CAZUMBA","pr":{"apf":"","ap":"8014890-13.2025.8.05.0001 - ID 484012247","mpu":"","ip":""},"pd":"ap","dt":"31/01/2025","rv":"REAVALIAR","obs":"INSTALADA EM 31/01/2025 (ID 484083803) AG. MP","st":"com"},
+  {"id":2,"nome":"ANDRE VELOSO DE OLIVEIRA","pr":{"apf":"","ap":"8071199-25.2023.8.05.0001 / 8187250-85.2024.8.05.0001 - ID 429853235","mpu":"","ip":""},"pd":"ap","dt":"07/02/2024","rv":"18/11/25","obs":"INSTALADA EM 12/12/24 (ID 505930088) MANTIDA EM 18/08/25 (ID 515081860)","st":"com"},
+  {"id":3,"nome":"ANDRE VELOSO DE OLIVEIRA","pr":{"apf":"","ap":"8071199-25.2023.8.05.0001 - ID 429853235","mpu":"","ip":""},"pd":"ap","dt":"07/04/2024","rv":"18/11/25","obs":"MANTIDA EM 18/08/25 (ID 515081860)","st":"com"},
+  {"id":4,"nome":"Antonio Carlos Couto Carahy Neto","pr":{"apf":"","ap":"8172162-70.2025.8.05.0001 - ID 532185806","mpu":"","ip":""},"pd":"ap","dt":"15/12/2025","rv":"","obs":"","st":"sem"},
+  {"id":5,"nome":"BRUNO DA COSTA SOFIATTI","pr":{"apf":"","ap":"8050476-48.2024.8.05.0001 - ID 464820486","mpu":"","ip":""},"pd":"ap","dt":"19/09/2024","rv":"REAVALIAR","obs":"AG. MANIFESTAÇÃO DO ADV. DA VÍTIMA E DO MP","st":"com"},
+  {"id":6,"nome":"BRUNO ROSA CARVALHO DOS SANTOS","pr":{"apf":"0502914-64.2020.8.05.0001","ap":"","mpu":"","ip":""},"pd":"apf","dt":"17/12/2025","rv":"","obs":"","st":"sem"},
+  {"id":7,"nome":"CARLITO DE JESUS MOREIRA","pr":{"apf":"","ap":"8137058-22.2022.8.05.0001 - ID 450405861","mpu":"","ip":""},"pd":"ap","dt":"24/06/2024","rv":"NECESSITA DE CONCLUSÃO","obs":"PRISÃO DECRETADA EM 17/10/25 NÃO INSTALADA","st":"sem"},
+  {"id":8,"nome":"CARLOS ALEXANDRE O. SANTANA ARAUJO","pr":{"apf":"","ap":"8115925-16.2025.8.05.0001 - ID 523054157","mpu":"","ip":""},"pd":"ap","dt":"03/10/2025","rv":"07/01/26","obs":"INSTALADA EM 07/10/25 (ID 524980097)","st":"com"},
+  {"id":9,"nome":"CARLOS ANDRE MIRANDA DA SILVA","pr":{"apf":"","ap":"8027054-73.2026.8.05.0001","mpu":"","ip":""},"pd":"ap","dt":"18/03/2026","rv":"","obs":"","st":"com"},
+  {"id":10,"nome":"DAVID EVANGELISTA","pr":{"apf":"","ap":"8239525-74.2025.8.05.0001","mpu":"","ip":""},"pd":"ap","dt":"23/01/2026","rv":"23/06/2026","obs":"","st":"sem"},
+  {"id":11,"nome":"DAVID GEEFERSON FERREIRA DA SILVA","pr":{"apf":"","ap":"8076327-26.2023.8.05.0001","mpu":"","ip":""},"pd":"ap","dt":"23/01/2026","rv":"23/04/2026","obs":"","st":"sem"},
+  {"id":12,"nome":"EDILTON FREITAS DA SILVA","pr":{"apf":"","ap":"8103660-21.2021.8.05.0001 - ID 225918533","mpu":"","ip":""},"pd":"ap","dt":"23/08/2022","rv":"","obs":"INSTALADA EM 05/04/2024 DECISÃO MANTENDO MPU","st":"com"},
+  {"id":13,"nome":"ELOI LEIRO DA SILVA OTERO","pr":{"apf":"","ap":"8000234-51.2025.8.05.0001 - ID 518194594","mpu":"","ip":""},"pd":"ap","dt":"04/09/25","rv":"","obs":"AG. COMPRIMENTO","st":"sem"},
+  {"id":14,"nome":"FABIO DOS SANTOS DE FREITAS","pr":{"apf":"","ap":"8240791-96.2025.8.05.0001","mpu":"","ip":""},"pd":"ap","dt":"18/03/2026","rv":"","obs":"","st":"com"},
+  {"id":15,"nome":"FLÁVIO DE JESUS BARBOSA","pr":{"apf":"","ap":"8186296-05.2025.8.05.0001","mpu":"","ip":""},"pd":"ap","dt":"09/02/2026","rv":"","obs":"Prisão revogada em 09/02/2026 com monitoramento","st":"sem"},
+  {"id":16,"nome":"GERSONILTON OLIVEIRA SILVA","pr":{"apf":"","ap":"8084609-19.2024.8.05.0001 - ID 491378746","mpu":"","ip":""},"pd":"ap","dt":"23/03/2025","rv":"REAVALIAR","obs":"INSTALADA EM 31/03/25 (ID 513472907)","st":"com"},
+  {"id":17,"nome":"GETULIO OLIVEIRA SILVA","pr":{"apf":"","ap":"8019698-95.2024.8.05.0001 - ID 477987838","mpu":"","ip":""},"pd":"ap","dt":"11/12/2024","rv":"","obs":"MANIFESTAÇÃO DOS PATRONOS NOS AUTOS RESE","st":"com"},
+  {"id":18,"nome":"GILMAR SOUZA ALMEIDA","pr":{"apf":"","ap":"8189527-40.2025.8.05.0001","mpu":"","ip":""},"pd":"ap","dt":"24/11/2025","rv":"25/02/2026","obs":"","st":"sem"},
+  {"id":19,"nome":"ISRAEL MACEDO CHAGAS","pr":{"apf":"","ap":"8144154-54.2023.8.05.0001 - ID 438000845","mpu":"","ip":""},"pd":"ap","dt":"02/04/2024","rv":"REAVALIAR","obs":"INSTALADA EM 23/05/25","st":"com"},
+  {"id":20,"nome":"JEFERSON R. SANTANA DE ALMEIDA","pr":{"apf":"","ap":"8056657-31.2025.8.05.0001 - ID 494242678","mpu":"","ip":""},"pd":"ap","dt":"02/04/2025","rv":"","obs":"SEM INFORMAÇÃO DE MONITORAÇÃO CONCLUSO","st":"sem"},
+  {"id":21,"nome":"JOAO COSTA OLIVEIRA","pr":{"apf":"","ap":"8165576-17.2025.8.05.0001 ID 531863699","mpu":"","ip":""},"pd":"ap","dt":"24/11/2025","rv":"","obs":"","st":"sem"},
+  {"id":22,"nome":"JOÃO LUIS MENESES DE JESUS","pr":{"apf":"","ap":"8183654-30.2023.8.05.0001 / 8183162-38.2023.8.05.0001 - ID 429620146","mpu":"","ip":""},"pd":"ap","dt":"29/01/2024","rv":"25/07/24","obs":"SENTENÇA CONDENATÓRIA (ID 468398613)","st":"com"},
+  {"id":23,"nome":"JOAO MARCOS DOS SANTOS CARDOSO","pr":{"apf":"","ap":"8105767-04.2022.8.05.0001 - ID 433991918","mpu":"","ip":""},"pd":"ap","dt":"08/03/2024","rv":"REAVALIAR","obs":"PRORROGADA EM 30/03/2025 (ID 492808795)","st":"com"},
+  {"id":24,"nome":"JONES BRITO VIEIRA","pr":{"apf":"","ap":"8127080-50.2024.8.05.0001 - ID 515227940","mpu":"","ip":""},"pd":"ap","dt":"19/08/2025","rv":"26/11/25","obs":"MANTIDA EM 26/08/25 (ID 516514266)","st":"com"},
+  {"id":25,"nome":"JORGE LINO CONCEICAO","pr":{"apf":"","ap":"8040276-79.2024.8.05.0001 - ID 488396432","mpu":"","ip":""},"pd":"ap","dt":"26/02/2025","rv":"","obs":"ACUSADO PRESO EM OUTRO PROCESSO. MONITORAMENTO SUSPENSO","st":"com"},
+  {"id":26,"nome":"JOSE CLAUDIO CARVALHO DE JESUS","pr":{"apf":"","ap":"8062738-98.2022.8.05.0001","mpu":"","ip":""},"pd":"ap","dt":"10/07/2023","rv":"","obs":"REVOGADA 01/06/25. AG. MP SOBRE BOTÃO DO PÂNICO","st":"com"},
+  {"id":27,"nome":"JOSÉ ROBERTO ALVES DOS SANTOS","pr":{"apf":"","ap":"8221187-52.2025.8.05.0001","mpu":"","ip":""},"pd":"ap","dt":"03/03/2026","rv":"","obs":"DECISÃO DE 03/03/2026","st":"sem"},
+  {"id":28,"nome":"JOSIMA SOUZA LEMOS","pr":{"apf":"","ap":"8051346-30.2023.8.05.0001 - ID 502198110","mpu":"","ip":""},"pd":"ap","dt":"25/05/2025","rv":"","obs":"SEM INFORMAÇÃO DE MONITORAÇÃO AG. CMEP","st":"sem"},
+  {"id":29,"nome":"JULIO NASCIMENTO","pr":{"apf":"","ap":"8173910-40.2025.8.05.0001","mpu":"","ip":""},"pd":"ap","dt":"10/02/2026","rv":"","obs":"","st":"sem"},
+  {"id":30,"nome":"LUIZ AMÉRICO GUIMARÃES","pr":{"apf":"","ap":"8044585-46.2024.8.05.0001","mpu":"","ip":""},"pd":"ap","dt":"05/03/2026","rv":"","obs":"REVOGAÇÃO DA PRISÃO COM MONITORAMENTO","st":"sem"},
+  {"id":31,"nome":"MATHEUS ROCHA HERMIDA","pr":{"apf":"","ap":"8012606-66.2024.8.05.0001","mpu":"","ip":""},"pd":"ap","dt":"30/01/2024","rv":"","obs":"SENTENÇA EXTINÇÃO MPU. AG. MP SOBRE TORNOZELEIRA","st":"com"},
+  {"id":32,"nome":"MAURICIO NASCIMENTO DOS SANTOS","pr":{"apf":"","ap":"8098945-62.2023.8.05.0001","mpu":"","ip":""},"pd":"ap","dt":"17/03/2026","rv":"","obs":"","st":"sem"},
+  {"id":33,"nome":"MAURICIO TEIXEIRA NASCIMENTO","pr":{"apf":"","ap":"8021252-31.2025.8.05.0001 - ID 485524125","mpu":"","ip":""},"pd":"ap","dt":"11/02/2025","rv":"17/01/26","obs":"INSTALADA EM 11/02/2025 MANTIDA EM 17/10/25","st":"com"},
+  {"id":34,"nome":"MICHEL NASCIMENTO KOROSSY","pr":{"apf":"","ap":"8137521-27.2023.8.05.0001 - ID 414657513","mpu":"","ip":""},"pd":"ap","dt":"12/10/2023","rv":"","obs":"PRORROGADA POR 60 DIAS EM 18/08/25","st":"com"},
+  {"id":35,"nome":"OSMAR SANTOS DE ARAGÃO","pr":{"apf":"","ap":"8072139-58.2021.8.05.0001 - ID 134156591","mpu":"","ip":""},"pd":"ap","dt":"01/09/2025","rv":"07/01/26","obs":"INSTALADA EM 07/10/25","st":"com"},
+  {"id":36,"nome":"RAIMURILDO DE JESUS SANTOS","pr":{"apf":"","ap":"8137314-62.2022.8.05.0001 - ID 448753623","mpu":"","ip":""},"pd":"ap","dt":"14/06/2024","rv":"REAVALIAR","obs":"INSTALADA EM 09/08/2024 MANTIDA EM 05/08/25","st":"com"},
+  {"id":37,"nome":"REGIVALDO SANTOS DA SILVEIRA","pr":{"apf":"","ap":"8027919-38.2022.8.05.0001 - ID 415433603","mpu":"","ip":""},"pd":"ap","dt":"23/10/2023","rv":"REAVALIAR","obs":"PRORROGADA MPU EM 03/07/2024 INSTALADA EM 20/03/2025","st":"com"},
+  {"id":38,"nome":"REINAN OLIVEIRA DE JESUS","pr":{"apf":"","ap":"8003673-41.2023.8.05.0001 - ID 514916928","mpu":"","ip":""},"pd":"ap","dt":"18/08/25","rv":"","obs":"AG. VISTA AO MP","st":"sem"},
+  {"id":39,"nome":"RICARDO DA CRUZ SANTOS","pr":{"apf":"","ap":"8034211-34.2025.8.05.0001 - ID 488791199","mpu":"","ip":""},"pd":"ap","dt":"02/03/2025","rv":"","obs":"REVOGAÇÃO deferida em 24/11/2025","st":"com"},
+  {"id":40,"nome":"VALDOMIRO LUIS NERY ARAUJO","pr":{"apf":"","ap":"8004266-02.2025.8.05.0001 - ID 504104151","mpu":"","ip":""},"pd":"ap","dt":"25/06/2025","rv":"04/03/26","obs":"MANTIDA EM 04/11/25 (ID 528622350)","st":"com"},
+  {"id":41,"nome":"VICTOR SOUSA LEAL","pr":{"apf":"","ap":"8018280-59.2023.8.05.0001 - ID 526006355","mpu":"","ip":""},"pd":"ap","dt":"17/10/25","rv":"","obs":"REQUERENTE PEDIU REVOGAÇÃO","st":"sem"}
+];
+
+// ============================================================
+// APP STATE
+// ============================================================
+let allData      = [];
+let filtered     = [];
+let curFilter    = 'todos';
+let curPage      = 1;
+let editId       = null;
+let deleteId     = null;
+let dbRef        = null;
+let ready        = false;
+const PAGE_SIZE  = 15;
+
+// ============================================================
+// FIREBASE INIT
+// ============================================================
+function init() {
+  if (firebaseConfig.apiKey === 'COLE_SUA_API_KEY_AQUI') {
+    document.getElementById('config-notice').style.display = 'block';
+    document.getElementById('loading-box').innerHTML =
+      '<div style="padding:40px;text-align:center;color:#d97706">⚠️ Configure o Firebase para usar o sistema.<br><small style="color:#9ca3af;font-size:11px">Edite o arquivo e preencha firebaseConfig com os seus dados</small></div>';
+    setConn(false, 'Não configurado');
+    return;
+  }
+
+  try {
+    firebase.initializeApp(firebaseConfig);
+    dbRef = firebase.database().ref('monitorados');
+
+    // Indicador de conexão (tempo real)
+    firebase.database().ref('.info/connected').on('value', snap => {
+      const online = !!snap.val();
+      setConn(online, online ? 'Online · Sincronizado' : 'Offline');
+    });
+
+    // Semear dados se banco vazio, depois escutar
+    dbRef.once('value', snap => {
+      if (!snap.exists()) {
+        const seed = {};
+        INITIAL.forEach(r => { seed[r.id] = r; });
+        dbRef.set(seed).then(startListen);
+      } else {
+        startListen();
+      }
+    }).catch(err => {
+      document.getElementById('loading-box').innerHTML =
+        `<div style="padding:40px;text-align:center;color:#dc2626">❌ Erro de conexão.<br><small>${err.message}</small></div>`;
+      setConn(false, 'Erro');
+    });
+  } catch(e) {
+    document.getElementById('loading-box').innerHTML =
+      `<div style="padding:40px;text-align:center;color:#dc2626">❌ ${e.message}</div>`;
+  }
+}
+
+function startListen() {
+  dbRef.on('value', snap => {
+    const val = snap.val();
+    allData = val ? Object.values(val) : [];
+    if (!ready) {
+      ready = true;
+      document.getElementById('loading-box').style.display = 'none';
+      document.getElementById('main-table').style.display  = 'table';
+      document.getElementById('pagination').style.display  = 'flex';
+    }
+    applyFilters();
+  });
+}
+
+function setConn(online, label) {
+  const dot = document.getElementById('conn-dot');
+  dot.className = 'conn-dot' + (online ? '' : ' offline');
+  document.getElementById('conn-lbl').textContent = label;
+}
+
+// ============================================================
+// FILTERS & SORTING
+// ============================================================
+function setFilter(val, btn) {
+  curFilter = val;
+  curPage   = 1;
+  document.querySelectorAll('.fbtn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  applyFilters();
+}
+
+function applyFilters() {
+  const q    = (document.getElementById('search-input').value || '').toLowerCase().trim();
+  const sort = document.getElementById('sort-sel').value;
+
+  let data = [...allData];
+
+  if (curFilter === 'com') data = data.filter(r => r.st === 'com');
+  if (curFilter === 'sem') data = data.filter(r => r.st === 'sem');
+
+  if (q) {
+    data = data.filter(r => {
+      const p = r.pr || {};
+      return [r.nome, p.apf, p.ap, p.mpu, p.ip, r.obs]
+        .some(v => (v || '').toLowerCase().includes(q));
+    });
+  }
+
+  if (sort === 'nome') data.sort((a,b) => (a.nome||'').localeCompare(b.nome||'','pt-BR'));
+  else if (sort === 'dt') data.sort((a,b) => (parseBR(a.dt)||0) - (parseBR(b.dt)||0));
+  else if (sort === 'rv') data.sort((a,b) => {
+    const av = parseBR(a.rv), bv = parseBR(b.rv);
+    if (!av && !bv) return 0;
+    if (!av) return 1;
+    if (!bv) return -1;
+    return av - bv;
+  });
+
+  filtered = data;
+  updateCounters();
+  render();
+}
+
+function updateCounters() {
+  document.getElementById('cnt-total').textContent = allData.length;
+  document.getElementById('cnt-com').textContent   = allData.filter(r => r.st === 'com').length;
+  document.getElementById('cnt-sem').textContent   = allData.filter(r => r.st === 'sem').length;
+}
+
+// ============================================================
+// RENDER
+// ============================================================
+function render() {
+  const tbody = document.getElementById('tbody');
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  if (curPage > totalPages) curPage = totalPages;
+
+  if (filtered.length === 0) {
+    document.getElementById('main-table').style.display  = 'none';
+    document.getElementById('empty-state').style.display = 'block';
+    document.getElementById('pagination').style.display  = 'none';
+    return;
+  }
+
+  document.getElementById('main-table').style.display  = ready ? 'table' : 'none';
+  document.getElementById('empty-state').style.display = 'none';
+  document.getElementById('pagination').style.display  = 'flex';
+
+  const start    = (curPage - 1) * PAGE_SIZE;
+  const pageData = filtered.slice(start, start + PAGE_SIZE);
+  tbody.innerHTML = pageData.map(row).join('');
+  renderPg(totalPages);
+}
+
+function row(r) {
+  const pr  = r.pr || {};
+  const pd  = r.pd || 'ap';
+  const prRows = [['ap',pr.ap],['apf',pr.apf],['mpu',pr.mpu],['ip',pr.ip]]
+    .filter(([,v]) => v);
+
+  const prHtml = prRows.length
+    ? prRows.map(([k,v]) =>
+        `<div class="pr-row"><span class="pr-lbl">${k.toUpperCase()}</span>` +
+        `<span class="pr-val ${k===pd?'pr-main':''}">${esc(v)}</span></div>`
+      ).join('')
+    : '<span style="color:#9ca3af">—</span>';
+
+  const days = calcDays(r.dt);
+  const rvH  = renderRv(r.rv);
+  const obsH = renderObs(r.obs || '', r.id);
+
+  return `<tr>
+    <td><span class="badge ${r.st}" onclick="toggleSt(${r.id})">${r.st==='com'?'COM':'SEM'}</span></td>
+    <td class="nome-cell">${esc(r.nome||'')}</td>
+    <td><div class="pr-cell">${prHtml}</div></td>
+    <td><span class="${days.dtCls}">${esc(r.dt||'—')}</span></td>
+    <td><span class="${days.cls}">${days.dias}</span></td>
+    <td>${rvH}</td>
+    <td class="obs-cell">${obsH}</td>
+    <td style="white-space:nowrap">
+      <button class="btn-edit-sm" onclick="openEdit(${r.id})">✏️</button>
+      <button class="btn-del-sm"  onclick="openDel(${r.id})">🗑️</button>
+    </td>
+  </tr>`;
+}
+
+// ---- Helpers ----
+function calcDays(dtStr) {
+  const p = parseBR(dtStr);
+  if (!p) return { dias:'—', cls:'d-ok', dtCls:'d-ok' };
+  const today = new Date(); today.setHours(0,0,0,0);
+  const diff  = Math.floor((today - p) / 86400000);
+  if (diff < 0) return { dias:`${Math.abs(diff)}d`, cls:'d-ok', dtCls:'d-ok' };
+  const cls   = diff >= 180 ? 'd-bad' : diff >= 90 ? 'd-warn' : 'd-ok';
+  return { dias:`${diff}d`, cls, dtCls: cls };
+}
+
+function renderRv(rv) {
+  if (!rv) return '<span class="rv-ok">—</span>';
+  if (rv === 'REAVALIAR') return `<span class="rv-warn">⚠ REAVALIAR</span>`;
+  if (rv === 'NECESSITA DE CONCLUSÃO') return `<span class="rv-bad">🔴 NECESSITA DE CONCLUSÃO</span>`;
+  const p = parseBR(rv);
+  if (p) {
+    const today = new Date(); today.setHours(0,0,0,0);
+    if (p < today) return `<span class="rv-warn">${esc(rv)}</span>`;
+  }
+  return `<span class="rv-ok">${esc(rv)}</span>`;
+}
+
+function renderObs(obs, id) {
+  if (!obs) return '<span style="color:#9ca3af">—</span>';
+  if (obs.length <= 55) return `<span>${esc(obs)}</span>`;
+  return `<span>
+    <span id="os-${id}">${esc(obs.substring(0,55))}… <button class="obs-toggle-btn" onclick="togObs(${id})">mais</button></span>
+    <span id="of-${id}" style="display:none">${esc(obs)} <button class="obs-toggle-btn" onclick="togObs(${id})">menos</button></span>
+  </span>`;
+}
+
+function togObs(id) {
+  const s = document.getElementById(`os-${id}`);
+  const f = document.getElementById(`of-${id}`);
+  if (!s||!f) return;
+  const show = s.style.display !== 'none';
+  s.style.display = show ? 'none' : '';
+  f.style.display = show ? ''     : 'none';
+}
+
+// ============================================================
+// PAGINATION
+// ============================================================
+function renderPg(total) {
+  const p   = curPage;
+  document.getElementById('pg-prev').disabled = p <= 1;
+  document.getElementById('pg-next').disabled = p >= total;
+  document.getElementById('pg-info').textContent =
+    `Página ${p} de ${total} · ${filtered.length} registros`;
+
+  let html = '';
+  for (let i = 1; i <= total; i++) {
+    if (i===1 || i===total || (i>=p-2 && i<=p+2)) {
+      html += `<button class="btn-pg${i===p?' pg-active':''}" onclick="setPage(${i})">${i}</button>`;
+    } else if (i===p-3||i===p+3) {
+      html += `<span class="pg-ellipsis">…</span>`;
+    }
+  }
+  document.getElementById('pg-numbers').innerHTML = html;
+}
+
+function goPage(dir) {
+  const total = Math.ceil(filtered.length / PAGE_SIZE);
+  const np    = curPage + dir;
+  if (np < 1 || np > total) return;
+  curPage = np;
+  render();
+  scrollTo({ top:0, behavior:'smooth' });
+}
+
+function setPage(n) {
+  curPage = n;
+  render();
+  scrollTo({ top:0, behavior:'smooth' });
+}
+
+// ============================================================
+// STATUS TOGGLE
+// ============================================================
+function toggleSt(id) {
+  if (!dbRef) return;
+  const r = allData.find(x => x.id == id);
+  if (!r) return;
+  dbRef.child(String(id)).update({ st: r.st === 'com' ? 'sem' : 'com' });
+}
+
+// ============================================================
+// CRUD
+// ============================================================
+function openAdd() {
+  editId = null;
+  document.getElementById('form-title').textContent = 'Adicionar Monitorado';
+  clearForm();
+  openModal('form-modal');
+}
+
+function openEdit(id) {
+  const r = allData.find(x => x.id == id);
+  if (!r) return;
+  editId = id;
+  document.getElementById('form-title').textContent = 'Editar Monitorado';
+  const pr = r.pr || {};
+  document.getElementById('f-nome').value   = r.nome || '';
+  document.getElementById('f-pr-ap').value  = pr.ap  || '';
+  document.getElementById('f-pr-apf').value = pr.apf || '';
+  document.getElementById('f-pr-mpu').value = pr.mpu || '';
+  document.getElementById('f-pr-ip').value  = pr.ip  || '';
+  document.getElementById('f-pd').value     = r.pd   || 'ap';
+  document.getElementById('f-dt').value     = r.dt   || '';
+  document.getElementById('f-rv').value     = r.rv   || '';
+  document.getElementById('f-obs').value    = r.obs  || '';
+  document.getElementById('f-st').value     = r.st   || 'com';
+  openModal('form-modal');
+}
+
+function openDel(id) {
+  const r = allData.find(x => x.id == id);
+  if (!r) return;
+  deleteId = id;
+  document.getElementById('del-nome-span').textContent = r.nome || 'este registro';
+  openModal('del-modal');
+}
+
+function clearForm() {
+  ['f-nome','f-pr-ap','f-pr-apf','f-pr-mpu','f-pr-ip','f-dt','f-rv','f-obs'].forEach(id => {
+    document.getElementById(id).value = '';
+    document.getElementById(id).classList.remove('error');
+  });
+  document.getElementById('f-pd').value = 'ap';
+  document.getElementById('f-st').value = 'com';
+}
+
+function saveRecord() {
+  if (!dbRef) return;
+  const nomeEl = document.getElementById('f-nome');
+  const nome   = nomeEl.value.trim();
+  if (!nome) {
+    nomeEl.classList.add('error');
+    nomeEl.focus();
+    return;
+  }
+  nomeEl.classList.remove('error');
+
+  const record = {
+    nome,
+    pr: {
+      ap:  document.getElementById('f-pr-ap').value.trim(),
+      apf: document.getElementById('f-pr-apf').value.trim(),
+      mpu: document.getElementById('f-pr-mpu').value.trim(),
+      ip:  document.getElementById('f-pr-ip').value.trim()
+    },
+    pd:  document.getElementById('f-pd').value,
+    dt:  document.getElementById('f-dt').value.trim(),
+    rv:  document.getElementById('f-rv').value.trim(),
+    obs: document.getElementById('f-obs').value.trim(),
+    st:  document.getElementById('f-st').value
+  };
+
+  if (editId) {
+    record.id = editId;
+    dbRef.child(String(editId)).set(record);
+  } else {
+    const newId = (allData.reduce((m,r) => Math.max(m, Number(r.id)||0), 0)) + 1;
+    record.id = newId;
+    dbRef.child(String(newId)).set(record);
+  }
+
+  closeModal('form-modal');
+}
+
+function confirmDelete() {
+  if (!dbRef || !deleteId) return;
+  dbRef.child(String(deleteId)).remove();
+  deleteId = null;
+  closeModal('del-modal');
+}
+
+// ============================================================
+// CSV EXPORT
+// ============================================================
+function exportCSV() {
+  const hdr = ['ID','Nome','AP','APF','MPU','IP','Proc.Principal','Decretação','Reavaliação','Observações','Status'];
+  const rows = filtered.map(r => {
+    const p = r.pr || {};
+    return [r.id, r.nome, p.ap, p.apf, p.mpu, p.ip,
+            r.pd, r.dt, r.rv, r.obs, r.st]
+      .map(v => `"${(v||'').toString().replace(/"/g,'""')}"`);
+  });
+  const csv  = [hdr.map(h=>`"${h}"`).join(','), ...rows.map(r=>r.join(','))].join('\n');
+  const blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8;'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url;
+  a.download = `monitorados_${new Date().toLocaleDateString('pt-BR').replace(/\//g,'-')}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ============================================================
+// UTILS
+// ============================================================
+function parseBR(str) {
+  if (!str || typeof str !== 'string') return null;
+  const m = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+  if (!m) return null;
+  let [,d,mo,y] = m;
+  if (y.length===2) y = '20'+y;
+  const dt = new Date(+y, +mo-1, +d);
+  return isNaN(dt.getTime()) ? null : dt;
+}
+
+function esc(str) {
+  if (!str) return '';
+  return str.toString()
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function openModal(id)  {
+  document.getElementById(id).classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+// Close on overlay click
+document.querySelectorAll('.overlay').forEach(el => {
+  el.addEventListener('click', e => { if (e.target===el) closeModal(el.id); });
+});
+// Close on Escape
+document.addEventListener('keydown', e => {
+  if (e.key==='Escape') document.querySelectorAll('.overlay.open').forEach(el=>closeModal(el.id));
+});
+
+// ============================================================
+// START
+// ============================================================
+init();
+</script>
+</body>
+</html>
