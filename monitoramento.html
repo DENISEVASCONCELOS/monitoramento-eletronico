@@ -54,7 +54,7 @@ body{font-family:'DM Sans',sans-serif;background:#f0f4f0;color:#1a1a1a;min-heigh
 .loading-box{text-align:center;padding:64px;color:#6b7280}
 .spinner{display:inline-block;width:36px;height:36px;border:3px solid #e5e7eb;border-top-color:#14532d;border-radius:50%;animation:spin .75s linear infinite;margin-bottom:14px}
 @keyframes spin{to{transform:rotate(360deg)}}
-table{width:100%;border-collapse:collapse;background:white;border-radius:10px;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,.08);font-size:12px}
+table{width:100%;table-layout:fixed;border-collapse:collapse;background:white;border-radius:10px;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,.08);font-size:12px}
 thead{background:#14532d}
 th{padding:8px 10px;text-align:left;color:white;font-weight:600;font-size:9.5px;text-transform:uppercase;letter-spacing:.6px;white-space:nowrap}
 td{padding:7px 10px;border-bottom:1px solid #f3f4f6;vertical-align:top}
@@ -62,15 +62,15 @@ tr:last-child td{border-bottom:none}
 tr:hover td{background:#f9fafb}
 
 /* COLUMN WIDTHS */
-.col-st   { width:52px }
-.col-nome { width:160px; min-width:140px }
-.col-pr   { width:210px; min-width:180px }
+.col-st   { width:48px }
+.col-nome { width:180px; min-width:180px; word-break:break-word }
+.col-pr   { width:240px; min-width:220px }
 .col-dt   { width:88px; white-space:nowrap }
 .col-dias { width:52px; white-space:nowrap }
-.col-rv   { width:130px }
-.col-def  { width:130px }
-.col-inst { width:110px }
-.col-obs  { width:auto; min-width:180px }
+.col-rv   { width:120px }
+.col-def  { width:115px }
+.col-inst { width:100px }
+.col-obs  { width:260px; min-width:200px; word-break:break-word }
 .col-act  { width:70px; white-space:nowrap }
 
 /* BADGES */
@@ -408,7 +408,7 @@ function init() {
   });
 
   // Última modificação
-  metaRef.child('lastMod').on('value', snap => {
+  metaRef.child("lastMod").on("value", snap => {
     const ts = snap.val();
     if (ts) {
       const d = new Date(ts);
@@ -421,7 +421,7 @@ function init() {
     if (!snap.exists()) {
       const seed = {};
       INITIAL.forEach(r => { seed[r.id] = r; });
-      dbRef.set(seed).then(startListen);
+      dbRef.set(seed).then(() => { touchMeta(); startListen(); });
     } else {
       startListen();
     }
