@@ -579,12 +579,16 @@ function render() {
 
 function rowHtml(r) {
   const pr = r.pr || {}, pd = r.pd || 'ap';
-  const prRows = ['ap','apf','mpu','ip','outro'].filter(k => pr[k])
-    .map(k => `<div class="pr-row"><span class="pr-lbl">${k.toUpperCase()}</span><span class="pr-val ${k===pd?'pr-main':''}">${esc(pr[k])}</span></div>`).join('');
-  // Processo de Fiscalização badge
+  // Só mostra o processo do decreto na tabela principal
+  let prRows = '';
+  if (pr[pd]) {
+    prRows = `<div class="pr-row"><span class="pr-lbl">${pd.toUpperCase()}</span><span class="pr-val pr-main">${esc(pr[pd])}</span></div>`;
+  }
+  // Processo de Fiscalização (se houver)
   const fiscBadge = r.pr_fisc ? `<div class="fisc-badge">👁 fiscalização: ${esc(r.pr_fisc)}</div>` : '';
   const days = calcDays(r.dt);
-  const dtH  = `<span class="${days.dtCls}">${esc(r.dt||'—')}</span>${r.def_id?`<div><span class="dec-lbl">ID</span> <span class="dec-id">${esc(r.def_id)}</span></div>`:''}`;
+  // Só a data, sem ID
+  const dtH  = `<span class="${days.dtCls}">${esc(r.dt||'—')}</span>`;
   const instH= (r.inst_dt||r.inst_id)?`<div class="dec-cell">${r.inst_dt?`<div><span class="dec-lbl">Data</span> ${esc(r.inst_dt)}</div>`:''}<div><span class="dec-lbl">ID</span> <span class="dec-id">${esc(r.inst_id||'—')}</span></div></div>`:'<span style="color:#9ca3af">—</span>';
   const viols= Array.isArray(r.violacoes)?r.violacoes.filter(Boolean):[];
   const violTag= viols.length?`<div class="viol-tag">🚨 ${viols.length} relat. CMEP</div>`:'';
